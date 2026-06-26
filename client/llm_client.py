@@ -1,7 +1,8 @@
 import os
 from openai import AsyncOpenAI
-from typing import Any
-from response import TextDelta, TokenUsage
+from typing import Any, AsyncGenerator
+from .response import EventType, StreamEvent, TextDelta, TokenUsage
+
 
 class LLMClient:
     def __init__(self) -> None:
@@ -22,7 +23,7 @@ class LLMClient:
 
     async def chat_completion(
         self, messages: list[dict[str, Any]], stream: bool = True
-    ):
+    ) -> AsyncGenerator[StreamEvent, None]:
         client = self.get_client()
 
         kwargs = {
@@ -32,15 +33,23 @@ class LLMClient:
         }
 
         if stream:
-            self._stream_response()
+            async for event in self._stream_response(client, kwargs):
+                yield event
 
         else:
-            await self._non_stream_response(client, kwargs)
+            event = await self._non_stream_response(client, kwargs)
+            yield event
+            
+        return
 
-    async def _stream_response(self, messages: list[dict[str, Any]]):
+    async def _stream_response(
+        self, client: AsyncOpenAI, kwargs: dict[str, Any]
+    ) -> AsyncGenerator[StreamEvent, None]:
         pass
 
-    async def _non_stream_response(self, client: AsyncOpenAI, kwargs: dict[str, Any]):
+    async def _non_stream_response(
+        self, client: AsyncOpenAI, kwargs: dict[str, Any]
+    ) -> StreamEvent:
         response = await client.chat.completions.create(**kwargs)
         choice = response.choices[0]
         message = choice.message
@@ -49,14 +58,22 @@ class LLMClient:
         if message.content:
             text_delta = TextDelta(content=message.content)
 
+        usage = None
         if response.usage:
             usage = TokenUsage(
                 prompt_tokens=response.usage.prompt_tokens,
                 completion_tokens=response.usage.completion_tokens,
                 total_tokens=response.usage.total_tokens,
-                cached_tokens=response.prompt_tokens_details.cached_tokens if response.prompt_tokens_details else 0,
+                cached_tokens=(
+                    response.usage.prompt_tokens_details.cached_tokens
+                    if response.usage.prompt_tokens_details
+                    else 0
+                ),
             )
-        else:
-            usage = None
 
-        print(response)
+        return StreamEvent(
+            type=EventType.MESSAGE_COMPLETE,
+            text_delta=text_delta,
+            finish_reason=choice.finish_reason,
+            usage=usage,
+        )
