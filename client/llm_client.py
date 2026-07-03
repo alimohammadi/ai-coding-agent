@@ -2,7 +2,7 @@ import asyncio
 import os
 from openai import APIConnectionError, APIError, AsyncOpenAI, RateLimitError
 from typing import Any, AsyncGenerator
-from .response import EventType, StreamEvent, TextDelta, TokenUsage
+from .response import StreamEventType, StreamEvent, TextDelta, TokenUsage
 
 
 class LLMClient:
@@ -44,8 +44,8 @@ class LLMClient:
                 else:
                     event = await self._non_stream_response(client, kwargs)
                     yield event
-                return # Exit the function after yielding the error event
-             
+                return  # Exit the function after yielding the error event
+
             except RateLimitError as e:
                 if attempt < self._max_retries:
                     # attempt -> failed -> wait -> retry
@@ -53,7 +53,7 @@ class LLMClient:
                     await asyncio.sleep(wait_time)
                 else:
                     yield StreamEvent(
-                        type=EventType.ERROR,
+                        type=StreamEventType.ERROR,
                         error=f"Rate limit exceeded after {self._max_retries} retries: {str(e)}",
                     )
                     return  # Exit the function after yielding the error event
@@ -65,20 +65,20 @@ class LLMClient:
                     await asyncio.sleep(wait_time)
                 else:
                     yield StreamEvent(
-                        type=EventType.ERROR,
+                        type=StreamEventType.ERROR,
                         error=f"API connection error after {self._max_retries} retries: {str(e)}",
                     )
                     return  # Exit the function after yielding the error event
 
             except APIError as e:
                 yield StreamEvent(
-                    type=EventType.ERROR,
+                    type=StreamEventType.ERROR,
                     error=f"API error after {self._max_retries} retries: {str(e)}",
                 )
                 return  # Exit the function after yielding the error event
             except Exception as e:
                 yield StreamEvent(
-                    type=EventType.ERROR,
+                    type=StreamEventType.ERROR,
                     error=f"Unexpected error: {str(e)}",
                 )
                 return  # Exit the function after yielding the error event
@@ -103,7 +103,7 @@ class LLMClient:
                         else 0
                     ),
                 )
-                yield StreamEvent(type=EventType.RESPONSE, usage=usage)
+                yield StreamEvent(type=StreamEventType.RESPONSE, usage=usage)
 
             if not chunk.choices:
                 continue
@@ -116,12 +116,12 @@ class LLMClient:
 
             if delta.content:
                 yield StreamEvent(
-                    type=EventType.TEXT_DELTA,
+                    type=StreamEventType.TEXT_DELTA,
                     text_delta=TextDelta(content=delta.content),
                 )
 
         yield StreamEvent(
-            type=EventType.MESSAGE_COMPLETE,
+            type=StreamEventType.MESSAGE_COMPLETE,
             finish_reason=finish_reason,
             usage=usage,
         )
@@ -151,7 +151,7 @@ class LLMClient:
             )
 
         return StreamEvent(
-            type=EventType.MESSAGE_COMPLETE,
+            type=StreamEventType.MESSAGE_COMPLETE,
             text_delta=text_delta,
             finish_reason=choice.finish_reason,
             usage=usage,
