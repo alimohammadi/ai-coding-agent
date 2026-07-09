@@ -33,7 +33,10 @@ class ReadFileTool(Tool):
     )
     kind = ToolKind.READ
 
-    # schema = ReadFileParams
+    @property
+    def schema(self):
+        return ReadFileParams
+
 
     MAX_FILE_SIZE = 1024 * 1024 * 10
     MAX_OUTPUT_TOKENS = 25000

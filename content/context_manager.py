@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 from prompts.system import get_system_prompt
@@ -10,13 +11,23 @@ class MessageItem:
     role: str
     content: str
     token_count: int | None = None
+    tool_call_id: str | None = None
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)
+    pruned_at: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "role": self.role,
-            "content": self.content or "",
-        }
+        result: dict[str, Any] = {"role": self.role}
 
+        if self.tool_call_id:
+            result["tool_call_id"] = self.tool_call_id
+
+        if self.tool_calls:
+            result["tool_calls"] = self.tool_calls
+
+        if self.content:
+            result["content"] = self.content
+
+        return result
 
 class ContextManager:
     def __init__(self) -> None:
@@ -65,3 +76,14 @@ class ContextManager:
             messages.append(item.to_dict())
 
         return messages
+
+
+    def add_tool_result(self, tool_call_id: str, content: str) -> None:
+        item = MessageItem(
+            role="tool",
+            content=content,
+            tool_call_id=tool_call_id,
+            token_count=count_tokens(content, self._model_name),
+        )
+
+        self._messages.append(item)

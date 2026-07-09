@@ -1,7 +1,9 @@
 from __future__ import annotations
-from enum import Enum
+
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any
+from tools.base import ToolResult
 from client.response import TokenUsage
 
 
@@ -14,6 +16,10 @@ class AgentEventType(str, Enum):
     # Text streaming
     TEXT_DELTA = "text_delta"
     TEXT_COMPLETE = "text_complete"
+
+    # Tool calls
+    TOOL_CALL_START = "tool_call_start"
+    TOOL_CALL_COMPLETE = "tool_call_complete"
 
 
 @dataclass
@@ -59,10 +65,43 @@ class AgentEvent:
             type=AgentEventType.TEXT_DELTA,
             data={"content": content},
         )
-    
+
     @classmethod
     def text_complete(cls, content: str) -> AgentEvent:
         return cls(
             type=AgentEventType.TEXT_COMPLETE,
             data={"content": content},
+        )
+
+    @classmethod
+    def tool_call_start(cls, call_id, name: str, arguments: dict[str, Any] | str,):
+        return cls(
+            type=AgentEventType.TOOL_CALL_START,
+            data={
+                "call_id": call_id,
+                "name": name,
+                "arguments": arguments,
+            },
+        )
+
+    @classmethod
+    def tool_call_complete(
+        cls,
+        call_id: str,
+        name: str,
+        result: ToolResult,
+    ):
+        return cls(
+            type=AgentEventType.TOOL_CALL_COMPLETE,
+            data={
+                "call_id": call_id,
+                "name": name,
+                "success": result.success,
+                "output": result.output,
+                "error": result.error,
+                "metadata": result.metadata,
+                "diff": result.diff.to_diff() if result.diff else None,
+                "truncated": result.truncated,
+                "exit_code": result.exit_code,
+            },
         )

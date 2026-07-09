@@ -101,14 +101,14 @@ class ToolResult:
 
 @dataclass
 class ToolInvocation:
-    params: dict[str, Any]
+    params: dict[str, Any] | str
     cwd: Path
 
 
 @dataclass
 class ToolConfirmation:
     tool_name: str
-    params: dict[str, Any]
+    params: dict[str, Any] | str
     description: str
 
     diff: FileDiff | None = None
@@ -151,7 +151,7 @@ class Tool(abc.ABC):
 
         return []
 
-    def is_mutating(self, params: dict[str, Any]) -> bool:
+    def is_mutating(self, params: dict[str, Any] | str) -> bool:
         return self.kind in {
             ToolKind.WRITE,
             ToolKind.SHELL,
