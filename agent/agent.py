@@ -8,11 +8,12 @@ from client.llm_client import LLMClient
 from client.response import StreamEventType, ToolCall, ToolResultMessage
 from content.context_manager import ContextManager
 from tools.registry import create_default_registry
-
+# from agent.session import Session
 
 class Agent:
     def __init__(self, config):
         self.client: LLMClient | None = LLMClient()
+        # self.session: Session | None = Session(self.config)
         self.context_manager = ContextManager()
         self.tool_registry = create_default_registry(config)
 

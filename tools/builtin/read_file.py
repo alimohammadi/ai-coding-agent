@@ -106,7 +106,7 @@ class ReadFileTool(Tool):
                 formatted_lines.append(f"{i:6}|{line}")
 
             output = "\n".join(formatted_lines)
-            token_count = count_tokens(output)
+            token_count = count_tokens(output, "poolside/laguna-m.1:free")
 
             truncated = False
             if token_count > self.MAX_OUTPUT_TOKENS:
