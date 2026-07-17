@@ -29,6 +29,7 @@ class MessageItem:
 
         return result
 
+
 class ContextManager:
     def __init__(self) -> None:
         self._system_prompt = get_system_prompt()
@@ -47,7 +48,11 @@ class ContextManager:
 
         self._messages.append(message)
 
-    def add_assistant_message(self, content: str | None) -> None:
+    def add_assistant_message(
+        self,
+        content: str | None,
+        tool_calls: list[dict] | None = None,
+    ) -> None:
         message = MessageItem(
             role="assistant",
             content=content or "",
@@ -55,6 +60,7 @@ class ContextManager:
                 content or "",
                 self._model_name,
             ),
+            tool_calls=tool_calls or []
         )
 
         self._messages.append(message)
@@ -76,7 +82,6 @@ class ContextManager:
             messages.append(item.to_dict())
 
         return messages
-
 
     def add_tool_result(self, tool_call_id: str, content: str) -> None:
         item = MessageItem(

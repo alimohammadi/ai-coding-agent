@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -8,14 +9,21 @@ from client.llm_client import LLMClient
 from client.response import StreamEventType, ToolCall, ToolResultMessage
 from content.context_manager import ContextManager
 from tools.registry import create_default_registry
+
 # from agent.session import Session
 
+
 class Agent:
-    def __init__(self, config):
+    def __init__(
+        self,
+        config,
+        # confirmation_callback: Callable[[ToolConfirmation], bool] | None = None,
+    ):
         self.client: LLMClient | None = LLMClient()
         # self.session: Session | None = Session(self.config)
         self.context_manager = ContextManager()
         self.tool_registry = create_default_registry(config)
+        # self.session.approval_manager.confirmation_callback = confirmation_callback
 
     async def run(self, message: str):
         yield AgentEvent.agent_start(message)
@@ -56,10 +64,29 @@ class Agent:
                         tool_calls.append(event.tool_call)
 
                 elif event.type == StreamEventType.ERROR:
-                    yield AgentEvent.agent_error(event.error or "Unknown error occured.")
+                    yield AgentEvent.agent_error(
+                        event.error or "Unknown error occured."
+                    )
                     return
 
-            self.context_manager.add_assistant_message(response_text or None)
+            self.context_manager.add_assistant_message(
+                response_text or None,
+                tool_calls=(
+                    [
+                        {
+                            "id": tool_call.call_id,
+                            "type": "function",
+                            "function": {
+                                "name": tool_call.name,
+                                "arguments": json.dumps(tool_call.arguments),
+                            },
+                        }
+                        for tool_call in tool_calls
+                    ]
+                    if tool_calls
+                    else None
+                ),
+            )
 
             if response_text:
                 yield AgentEvent.text_complete(response_text)
